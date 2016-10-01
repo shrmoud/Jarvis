@@ -1,9 +1,13 @@
+#include<omp.h>
 #include<stdio.h>
+#include<stdlib.h>
+
+
 int main()
 {
   int i,j,k,n;
  
-  float A[20][20], c, b[10], sum=0.0, ratio;
+  float A[20][20], b[10], x[10], ratio;
   
   printf("\nEnter the order of matrix: ");
   scanf("%d",&n);
@@ -19,6 +23,13 @@ int main()
     }
 
 
+  printf("\nEnter the elements of b matrix row-wise:\n\n");
+  for(i=0; i<n; i++)
+    {
+      printf("b[%d]: ", i);
+      scanf("%f",&b[i]);
+    }
+
   //Generate Upper Triangular Matrix
   for(i=0; j<n-1; i++)
     {
@@ -30,8 +41,8 @@ int main()
 	  for(k=i; k<n; k++)
 	    {
 	      A[j][k] = A[j][k] - (ratio * A[i][k]);
-	      b[j] = b[j] - (ratio * b[i]);
 	    }
+	      b[j] = b[j] - (ratio * b[i]);
 	}
     }
   
@@ -39,20 +50,23 @@ int main()
   // Backward Substitution
   for(i=n-1; i>=0; i--)
     {
-      sum=0;
-      for(j=i+1; j<n; j++)
+      x[i] = b[i]; 
+      for(j=n-1; j > i; j--)
         {
-	  sum=sum+A[i][j]*b[j];
+	  x[i] = x[i] - A[i][j] * x[j];
         }
-      b[i]=(A[i][n+1]-sum)/A[i][i];
+      x[i] /= A[i][i];
     }
+
 
   printf("\nThe solution is: \n");
 
-  for(i=1; i<=n; i++)
+  for(i=0; i<n; i++)
     {
       printf("\nx%d=%f\t",i,x[i]);
     }
+
+  printf("\n");
 
   return(0);
 }

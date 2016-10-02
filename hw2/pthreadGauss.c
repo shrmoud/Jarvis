@@ -2,33 +2,41 @@
 #include<stdio.h>
 #include<stdlib.h>
 
+#define NUM_THREADS 16;
 
-void thdfunc(float* A[], int* k, int* n)
+pthread_barrier_t phase_barrier, row_barrier;
+
+
+
+void thrdfunc(float* A[], int* n, void* num)
 {
 
-  int slice = (int)s;
-  int start = s * (n/p);
-  int end = (s+1) * (n/p);
+  int thread_number = (int) num;
+  
+  //  int slice = (int)s;
+  //  int start = s * (n/p);
+  //  int end = (s+1) * (n/p);
+  int k,j,i;
 
-  for(j=k+1; j<=n-1; j++)
+  for(k=0; k<=n-1;k++)
     {
-      A[k][j] = A[k][j] / A[k][k];
-    }
-}
 
+      pthread_barrier_wait(&row_barrier);
 
-void elimination(float* A[], int* k, int* n, float* b)
-{
-  for(i=k+1; i<=n-1; i++)
-    {
-      for(j=k+1; j<=n-1; j++)
+      for(j=k+1+thread_number; j<=n-1; j=j+NUM_THREADS)
 	{
-	  A[i][j] = A[i][j] - (A[i][k] * A[k][j]);
+	  A[k][j] = A[k][j] / A[k][k];
+	 
+	  for(i=k+1; i<=n-1; i++)
+	    {
+	      A[i][j] = A[i][j] - (A[i][k] * A[k][j]);
+	    }
 	}
-      b[i] = b[i] - (A[i][k] * y[k]);
-      A[i][k] = 0;
     }
+  
+  pthread_barrier_wait(&phase_barrier);
 }
+
 
 
 
@@ -41,6 +49,10 @@ int main()
   
   int p = 16; //number of threads
   pthread_t threads[p];
+
+  pthread_barrier_init(&phase_barrier, NULL, p); 
+  pthread_barrier_init(&row_barrier,NULL,p);
+
 
   printf("\nEnter the order of matrix: ");
   scanf("%d",&n);
@@ -63,39 +75,32 @@ int main()
       scanf("%f",&b[i]);
     }
 
-  //Generate Upper Triangular Matrix
-  for(k=0; k<=n-1; k++)
+  for(tn=0; tn<p;tn++)
     {
-
-      for(tn=0; tn<p;tn++)
-	{
-	  pthread_create(&threads[tn],NULL, division, (float **)A , &k, &n );
-	}
-
-      for(tn=0; tn<p; tn++)
-	{
-	  pthread_join(threads[tn],NULL);
-	}
-
-
+      pthread_create(&threads[tn],NULL, thrdfunc, (float **)A , &n, (void)tn);
+    }
+  
+  for(tn=0; tn<p; tn++)
+    {
+      pthread_join(threads[tn],NULL);
+    }
+  
+  pthread_barrier_wait(&phase_barrier);
+  
+  for(k=0; k<=n-1;k++)
+    {
+      
       y[k] = b[k]/A[k][k];
       A[k][k] = 1;
-
-      for(tn=0; tn<p;tn++)
+    
+      for(i=k+1; i<=n-1;i++)
 	{
-	  pthread_create(&threads[tn],NULL, elimination, (float **)A, &k, &n, b);
+	  b[i] = b[i] - A[i][k] * y[k];
+	  A[i][k] = 0;
 	}
-
-      for(tn=0; tn<p; tn++)
-	{
-	  pthread_join(threads[tn],NULL);
-	}
-      
-
     }
   
  
-
   // Backward Substitution
   for(k=n-1; k>=0; k--)
     {

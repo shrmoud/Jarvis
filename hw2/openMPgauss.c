@@ -7,7 +7,7 @@ int main()
 {
   int i,j,k,n;
  
-  float A[20][20], b[10], x[10], ratio;
+  float A[20][20], b[10], x[10], y[10];
   
   printf("\nEnter the order of matrix: ");
   scanf("%d",&n);
@@ -31,31 +31,33 @@ int main()
     }
 
   //Generate Upper Triangular Matrix
-  for(i=0; j<n-1; i++)
+  for(k=0; k<n-1; k++)
     {
-      //      #pragma omp parallel for
-      for(j=i; i<n; j++)
+      #pragma omp parallel num_threads(8) firstprivate(i)
+      #pragma omp parallel for
+      for(j=k+1; j<n-1; j++) 
         {
-	  ratio = A[j][i]/A[i][i];
-
-	  for(k=i; k<n; k++)
+	  y[i] = b[i]/A[i][i];
+	}	  for(k=i+1; k<n-1; k++)
 	    {
-	      A[j][k] = A[j][k] - (ratio * A[i][k]);
+	      A[j][k] = A[j][k] - (A[j][i] * A[i][k]);
 	    }
-	      b[j] = b[j] - (ratio * b[i]);
+	  b[j] = b[j] - (A[j][i] * y[i]);
+	  A[j][i] = 0;
 	}
     }
   
   
+  //  printMatrix(A,n);
+
   // Backward Substitution
   for(i=n-1; i>=0; i--)
     {
-      x[i] = b[i]; 
-      for(j=n-1; j > i; j--)
+      x[i] = y[i];
+      for(j=i-1;j>=0;j--)
         {
-	  x[i] = x[i] - A[i][j] * x[j];
+	  y[j] = y[j] - A[j][i] * x[i];
         }
-      x[i] /= A[i][i];
     }
 
 

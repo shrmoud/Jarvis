@@ -33,30 +33,36 @@ int main()
   //Generate Upper Triangular Matrix
   for(k=0; k<n-1; k++)
     {
-      #pragma omp parallel num_threads(8) firstprivate(i)
+      #pragma omp parallel num_threads(8) firstprivate(k)
       #pragma omp parallel for
       for(j=k+1; j<n-1; j++) 
         {
-	  y[i] = b[i]/A[i][i];
-	}	  for(k=i+1; k<n-1; k++)
+	  A[k][j] = A[k][j] / A[k][k];
+	}
+      y[k] = b[k]/A[k][k];
+      A[k][k] = 0;
+      
+      for(i=k+1; i<n-1; i++)
+	{
+	  for(j=k+1; j<n-1; j++)
 	    {
-	      A[j][k] = A[j][k] - (A[j][i] * A[i][k]);
+	      A[i][j] = A[i][j] - (A[i][k] * A[k][j]);
 	    }
-	  b[j] = b[j] - (A[j][i] * y[i]);
-	  A[j][i] = 0;
+	  b[i] = b[i] - (A[i][k] * y[k]);
+	  A[i][k] = 0;
 	}
     }
   
   
-  //  printMatrix(A,n);
+  
 
   // Backward Substitution
-  for(i=n-1; i>=0; i--)
+  for(k=n-1; k>=0; k--)
     {
-      x[i] = y[i];
-      for(j=i-1;j>=0;j--)
+      x[k] = y[k];
+      for(i=k-1;i>=0;i--)
         {
-	  y[j] = y[j] - A[j][i] * x[i];
+	  y[i] = y[i] - A[i][k] * x[k];
         }
     }
 

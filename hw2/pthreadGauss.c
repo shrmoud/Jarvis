@@ -6,12 +6,16 @@
 
 pthread_barrier_t phase_barrier, row_barrier;
 
+// following are function declarations
 
+void thrdfunc(float* A[], int n, int num);
 
-void thrdfunc(float* A[], int* n, void* num)
+// function declaration
+
+void thrdfunc(float* A[], int n, int num)
 {
 
-  int thread_number = (int) num;
+  int thread_number = num;
   
   //  int slice = (int)s;
   //  int start = s * (n/p);
@@ -23,13 +27,13 @@ void thrdfunc(float* A[], int* n, void* num)
 
       pthread_barrier_wait(&row_barrier);
 
-      for(j=k+1+thread_number; j<=n-1; j=j+NUM_THREADS)
+      for(j = k+1+thread_number ; j<=n-1 ; j=j+NUM_THREADS)
 	{
-	  A[k][j] = A[k][j] / A[k][k];
+	  A[k][j] = (A[k][j] / A[k][k]);
 	 
 	  for(i=k+1; i<=n-1; i++)
 	    {
-	      A[i][j] = A[i][j] - (A[i][k] * A[k][j]);
+	      A[i][j] = (A[i][j] - (A[i][k] * A[k][j]));
 	    }
 	}
     }
@@ -47,7 +51,7 @@ int main()
 
   float A[20][20], b[10], x[10], y[10];
   
-  int p = 16; //number of threads
+  int p = NUM_THREADS; //number of threads
   pthread_t threads[p];
 
   pthread_barrier_init(&phase_barrier, NULL, p); 
@@ -77,7 +81,7 @@ int main()
 
   for(tn=0; tn<p;tn++)
     {
-      pthread_create(&threads[tn],NULL, thrdfunc, (float **)A , &n, (void)tn);
+      pthread_create(&threads[tn],NULL, thrdfunc, (float **)A , n, tn);
     }
   
   for(tn=0; tn<p; tn++)

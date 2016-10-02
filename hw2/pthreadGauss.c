@@ -3,16 +3,21 @@
 #include<stdlib.h>
 
 
-void op()
+void thdfunc(float* A[], int* k, int* n)
 {
-  for(j=k+1; j<=n-1; j++) 
+
+  int slice = (int)s;
+  int start = s * (n/p);
+  int end = (s+1) * (n/p);
+
+  for(j=k+1; j<=n-1; j++)
     {
       A[k][j] = A[k][j] / A[k][k];
     }
 }
 
 
-void cp()
+void elimination(float* A[], int* k, int* n, float* b)
 {
   for(i=k+1; i<=n-1; i++)
     {
@@ -30,11 +35,12 @@ void cp()
 
 int main()
 {
-  int i,j,k,n;
- 
+  int i,j,k,n, tn;
+
   float A[20][20], b[10], x[10], y[10];
   
-  pthread_t threads[16];
+  int p = 16; //number of threads
+  pthread_t threads[p];
 
   printf("\nEnter the order of matrix: ");
   scanf("%d",&n);
@@ -61,12 +67,12 @@ int main()
   for(k=0; k<=n-1; k++)
     {
 
-      for(tn=0; tn<16;tn++)
+      for(tn=0; tn<p;tn++)
 	{
-	  pthread_create(&threads[tn],NULL, divisionLoop, NULL);
+	  pthread_create(&threads[tn],NULL, division, (float **)A , &k, &n );
 	}
 
-      for(tn=0; tn<16; tn++)
+      for(tn=0; tn<p; tn++)
 	{
 	  pthread_join(threads[tn],NULL);
 	}
@@ -74,6 +80,16 @@ int main()
 
       y[k] = b[k]/A[k][k];
       A[k][k] = 1;
+
+      for(tn=0; tn<p;tn++)
+	{
+	  pthread_create(&threads[tn],NULL, elimination, (float **)A, &k, &n, b);
+	}
+
+      for(tn=0; tn<p; tn++)
+	{
+	  pthread_join(threads[tn],NULL);
+	}
       
 
     }

@@ -1,10 +1,41 @@
+#include<omp.h>
 #include<stdio.h>
+#include<stdlib.h>
+
+
+void op()
+{
+  for(j=k+1; j<=n-1; j++) 
+    {
+      A[k][j] = A[k][j] / A[k][k];
+    }
+}
+
+
+void cp()
+{
+  for(i=k+1; i<=n-1; i++)
+    {
+      for(j=k+1; j<=n-1; j++)
+	{
+	  A[i][j] = A[i][j] - (A[i][k] * A[k][j]);
+	}
+      b[i] = b[i] - (A[i][k] * y[k]);
+      A[i][k] = 0;
+    }
+}
+
+
+
+
 int main()
 {
   int i,j,k,n;
  
-  float A[20][20], c, b[10], sum=0.0, ratio;
+  float A[20][20], b[10], x[10], y[10];
   
+  pthread_t threads[16];
+
   printf("\nEnter the order of matrix: ");
   scanf("%d",&n);
   
@@ -19,40 +50,55 @@ int main()
     }
 
 
-  //Generate Upper Triangular Matrix
-  for(i=0; j<n-1; i++)
+  printf("\nEnter the elements of b matrix row-wise:\n\n");
+  for(i=0; i<n; i++)
     {
-      //      #pragma omp parallel for
-      for(j=i; i<n; j++)
-        {
-	  ratio = A[j][i]/A[i][i];
+      printf("b[%d]: ", i);
+      scanf("%f",&b[i]);
+    }
 
-	  for(k=i; k<n; k++)
-	    {
-	      A[j][k] = A[j][k] - (ratio * A[i][k]);
-	      b[j] = b[j] - (ratio * b[i]);
-	    }
-	}
-    }
-  
-  
-  // Backward Substitution
-  for(i=n-1; i>=0; i--)
+  //Generate Upper Triangular Matrix
+  for(k=0; k<=n-1; k++)
     {
-      sum=0;
-      for(j=i+1; j<n; j++)
-        {
-	  sum=sum+A[i][j]*b[j];
-        }
-      b[i]=(A[i][n+1]-sum)/A[i][i];
+
+      for(tn=0; tn<16;tn++)
+	{
+	  pthread_create(&threads[tn],NULL, divisionLoop, NULL);
+	}
+
+      for(tn=0; tn<16; tn++)
+	{
+	  pthread_join(threads[tn],NULL);
+	}
+
+
+      y[k] = b[k]/A[k][k];
+      A[k][k] = 1;
+      
+
     }
+  
+ 
+
+  // Backward Substitution
+  for(k=n-1; k>=0; k--)
+    {
+      x[k] = y[k];
+      for(i=k-1;i>=0;i--)
+        {
+	  y[i] = y[i] - A[i][k] * x[k];
+        }
+    }
+
 
   printf("\nThe solution is: \n");
 
-  for(i=1; i<=n; i++)
+  for(i=0; i<n; i++)
     {
       printf("\nx%d=%f\t",i,x[i]);
     }
+
+  printf("\n");
 
   return(0);
 }

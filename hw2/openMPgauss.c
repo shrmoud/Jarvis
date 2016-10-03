@@ -2,6 +2,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 
+#define NUM_THREADS 16
 
 int main()
 {
@@ -33,7 +34,8 @@ int main()
   //Generate Upper Triangular Matrix
   for(k=0; k<=n-1; k++)
     {
-      //      #pragma omp parallel num_threads(8) 
+
+      //      #pragma omp parallel num_threads(NUM_THREADS)
       #pragma omp parallel for
       for(j=k+1; j<=n-1; j++) 
         {
@@ -41,7 +43,8 @@ int main()
 	}
       y[k] = b[k]/A[k][k];
       A[k][k] = 1;
-      
+
+      //#pragma omp parallel num_threads(NUM_THREADS)
       #pragma omp parallel for
       for(i=k+1; i<=n-1; i++)
 	{

@@ -1,37 +1,36 @@
-#include<omp.h>
+#include<pthread.h>
 #include<stdio.h>
 #include<stdlib.h>
 
 #define NUM_THREADS 16;
+int num;
+
 
 pthread_barrier_t phase_barrier, row_barrier;
 
 // following are function declarations
 
-void thrdfunc(float* A[], int n, int num);
+void* thrdfunc(void* p);
 
 // function declaration
 
-void thrdfunc(float* A[], int n, int num)
+void* thrdfunc(void* p)
 {
 
-  int thread_number = num;
-  
-  //  int slice = (int)s;
-  //  int start = s * (n/p);
-  //  int end = (s+1) * (n/p);
+  float* A = p;
+  int thread_number = pthread_self();
   int k,j,i;
 
-  for(k=0; k<=n-1;k++)
+  for(k=0; k<=num-1;k++)
     {
 
       pthread_barrier_wait(&row_barrier);
 
-      for(j = k+1+thread_number ; j<=n-1 ; j=j+NUM_THREADS)
+      for(j = (k+1+thread_number); j<=num-1 ; j=(j+NUM_THREADS))
 	{
 	  A[k][j] = (A[k][j] / A[k][k]);
 	 
-	  for(i=k+1; i<=n-1; i++)
+	  for(i=k+1; i<=num-1; i++)
 	    {
 	      A[i][j] = (A[i][j] - (A[i][k] * A[k][j]));
 	    }
@@ -61,6 +60,8 @@ int main()
   printf("\nEnter the order of matrix: ");
   scanf("%d",&n);
   
+  num = n;
+
   printf("\nEnter the elements of augmented matrix row-wise:\n\n");
   for(i=0; i<n; i++)
     {
@@ -81,7 +82,7 @@ int main()
 
   for(tn=0; tn<p;tn++)
     {
-      pthread_create(&threads[tn],NULL, thrdfunc, (float **)A , n, tn);
+      pthread_create(&threads[tn],NULL,thrdfunc, (void* )A);
     }
   
   for(tn=0; tn<p; tn++)

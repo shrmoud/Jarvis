@@ -2,7 +2,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 
-#define NUM_THREADS 16;
+#define NUM_THREADS 16
 int num;
 
 
@@ -28,11 +28,11 @@ void* thrdfunc(void* p)
 
       for(j = (k+1+thread_number); j<=num-1 ; j=(j+NUM_THREADS))
 	{
-	  A[k][j] = (A[k][j] / A[k][k]);
+	  *((A+k*num)+j) = *((A+k*num)+j) / *((A+k*num)+k);
 	 
 	  for(i=k+1; i<=num-1; i++)
 	    {
-	      A[i][j] = (A[i][j] - (A[i][k] * A[k][j]));
+	      *((A+i*num)+j) = *((A+i*num)+j) - (*((A+i*num)+k) * *((A+k*num)+j));
 	    }
 	}
     }

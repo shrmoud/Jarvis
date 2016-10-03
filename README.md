@@ -1,4 +1,3 @@
-# CS 451 Homeworks Folder
-# Fall 2016
+# Parallel and Distributed Computing
 # Shreyas Moudgalya
 # A20321695

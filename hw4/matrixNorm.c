@@ -231,15 +231,18 @@ void matrixNorm()
 
   float *d_A, *d_B;
   cudaError_t err;
-  err = cudaMalloc((void **) &A, sizeof(float)*n*n);
+  err = cudaMalloc((void **) &d_A, sizeof(float)*n*n);
   CHECK_ERR(err);
-  err = cudaMalloc(()void **)&B, sizeof(float)*n*n);
+  err = cudaMalloc(()void **)&d_B, sizeof(float)*n*n);
   CHECK_ERR(err);
   err = cudaMemcpy(d_A, A, sizeof(float)*n*n, cudaMemcpyHostToDevice);
   CHECK_ERR(err);
   err = cudaMemcpy(d_B, B, sizeof(float)*n*n, cudaMemcpyHostToDevice);
   CHECK_ERR(err);
-  normalized<<<ceil(n/256.0),256>>> (A, B, n);
+
+  dim3 dimGrid(Width/ TILE_WIDTH, Width/TILE_WIDTH);
+  dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
+  normalized<<<dimGrid,dimBlock>>> (A, B, n);
   err = cudaMemcpy(B, d_B, sizeof(float)*n*n, cudaMemcpyDeviceToHost);
   CHECK_ERR(err);
 }
@@ -257,34 +260,24 @@ __global__ void normalized(float* d_A, float* d_B, int N)
    3. Finally, calculating the normalized value by performing the following calculation (where B is the normalized matrix of A)
       B[row][col] = (A[row][col] – mean) / standard_deviation  */
 
+  //int Row = blockIdx.y * TILE_WIDTH + threadIdx.y;
+  //int Col = blockIdx.x * TILE_WIDTH + threadIdx.x;
+  //int tx = threadIdx.x, ty = threadIdx.y;
 
-  int row, col;
-  float mu, sigma; // Mean and Standard Deviation
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-  printf("Computing in GPU.\n");
+  float mu, signma; // Mean and Standard Deviation
 
-  for (col=0; col < N; col++) 
+  for(int k = 0; k < N; k++)
     {
-      mu = 0.0;
-
-      for (row=0; row < N; row++)
-	mu += d_A[row][col];
-
-      mu /= (float) N;
-      sigma = 0.0;
-      
-      for (row=0; row < N; row++)
-	sigma += powf(d_A[row][col] - mu, 2.0);
-
-      sigma /= (float) N;
-      
-      for (row=0; row < N; row++) 
-	{
-	  if (sigma == 0.0)
-	    B[row][col] = 0.0;
-	  else
-	    B[row][col] = (d_A[row][col] - mu) / sigma;
-	}
+      mu += A[k*n+col]; 
     }
+
+  //printf("Computing in GPU.\n");
+
+  
+
+
 }
 

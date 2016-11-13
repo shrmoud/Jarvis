@@ -15,6 +15,14 @@
 #include <sys/time.h>
 #include <time.h>
 
+
+#define CHECK_ERR(x)                                    \
+  if (x != cudaSuccess) {                               \
+  fprintf(stderr,"%s in %s at line %d\n",             \
+	  cudaGetErrorString(err),__FILE__,__LINE__);\
+  exit(-1);\
+  }     
+
 /* Program Parameters */
 #define MAXN 8000  /* Max value of N */
 int N;  /* Matrix size */
@@ -181,8 +189,9 @@ int main(int argc, char **argv) {
 /****** You will replace this routine with your own parallel version *******/
 /* Provided global variables are MAXN, N, A[][] and B[][],
  * defined in the beginning of this code.  B[][] is initialized to zeros.
+
  */
-void matrixNorm() {
+void matrixNormSerial() {
   int row, col; 
   float mu, sigma; // Mean and Standard Deviation
 
@@ -208,15 +217,42 @@ void matrixNorm() {
 }
 
 
-//cudaError_t err;
-//err = cudaMalloc((void **) &d_A, sizeof(float)*n);
-//CHECK_ERR(err);
-//err = cudaMemcpy(to, from, size, cudaMemcpyHostToDevice);
-//CHECK_ERR(err);
+void matrixNorm()
+{
+/* Grid - 2D array of Blocks [All threads in Grid execute same kernel func]
+   Block - 3D array of Threads [All blocks in Grid have same dimension]
 
-//cudaMemcpy(to, from, size, cudaMemcpyDeviceToHost);
-//threadIdx.x - id of thread
-//blockIdx.x - id of this block
-//blockDim.x - number of threads in each block
-// int pos = blockIdx.x * blockDim.x + threadIdx.x
-//vecAddKernel<<<ceil(n/256.0),256>>> (d_A, d_B, d_C, n);
+   > Once assigned to SM, the block must execute in its entirety by the SM
+   > Total size of Block = 1024
+   > Total dimentions of Grid = 65536  */
+
+  cudaError_t err;
+  err = cudaMalloc((void **) &d_A, sizeof(float)*n);
+  CHECK_ERR(err);
+  err = cudaMemcpy(to, from, size, cudaMemcpyHostToDevice);
+  CHECK_ERR(err);
+
+  cudaMemcpy(to, from, size, cudaMemcpyDeviceToHost);
+  //threadIdx.x - id of thread
+  //blockIdx.x - id of this block
+  //blockDim.x - number of threads in each block
+
+  vecAddKernel<<<ceil(n/256.0),256>>> (d_A, d_B, d_C, n);
+  err = cudaMemcpy(h_C, d_C, sizeof(float) *n, cudaMemcpyDeviceToHost);
+
+}
+
+
+__global__ void normalized()
+{
+
+  int i = blockDim.x * blockIdx.x + threadIdx.x;
+  
+/* 1. Calculating the mean of the column
+   2. Calculating the standard deviation (which requires the mean)
+      you may consider splitting the reductions in two: first, inside the values in each block and, second, reducing the 
+      totals for every block. Once the mean and standard deviation are calculated, the third step is straightforward. 
+   3. Finally, calculating the normalized value by performing the following calculation (where B is the normalized matrix of A)
+      B[row][col] = (A[row][col] – mean) / standard_deviation  */
+}
+

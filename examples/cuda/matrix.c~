@@ -1,0 +1,20 @@
+//Matrix multiplication kernel - thread specification
+
+//we used only 1 block, execute on one SM
+__global__ void MatrixMulKernel(float* Md, fload* Nd, fload* Pd, int Width)
+{
+  //2D thread ID
+  int tx = threadIdx.x;
+  int ty = threadIdex.y;
+  //Pvalues stores the Pd elements that is computed by the thread
+  fload Pvalue = 0;
+  for(int k=0; k< Width; k++)
+    {
+      float Mdelement = Md[ty*Width+k];
+      float Ndelement = Nd[k*Width+tx];
+      Pvalue += Mdelement * Ndelement;
+    }
+
+  //Write the matrix to device memory each thread writes one element
+  Pd[ty*Width+tx] = Pvalue;
+}

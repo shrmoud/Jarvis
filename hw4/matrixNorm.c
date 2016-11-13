@@ -18,10 +18,10 @@
 
 #define CHECK_ERR(x)                                    \
   if (x != cudaSuccess) {                               \
-  fprintf(stderr,"%s in %s at line %d\n",             \
-	  cudaGetErrorString(err),__FILE__,__LINE__);\
-  exit(-1);\
-  }     
+  fprintf(stderr,"%s in %s at line %d\n",               \
+	  cudaGetErrorString(err),__FILE__,__LINE__);   \
+  exit(-1);                                             \
+  }                                                     \
 
 /* Program Parameters */
 #define MAXN 8000  /* Max value of N */
@@ -226,24 +226,26 @@ void matrixNorm()
    > Total size of Block = 1024
    > Total dimentions of Grid = 65536  */
 
+
+// Global variables are MAXN, N, A[][] and B[][]
+
+  float *d_A, *d_B;
   cudaError_t err;
-  err = cudaMalloc((void **) &d_A, sizeof(float)*n);
+  err = cudaMalloc((void **) &A, sizeof(float)*n*n);
   CHECK_ERR(err);
-  err = cudaMemcpy(to, from, size, cudaMemcpyHostToDevice);
+  err = cudaMalloc(()void **)&B, sizeof(float)*n*n);
   CHECK_ERR(err);
-
-  cudaMemcpy(to, from, size, cudaMemcpyDeviceToHost);
-  //threadIdx.x - id of thread
-  //blockIdx.x - id of this block
-  //blockDim.x - number of threads in each block
-
-  vecAddKernel<<<ceil(n/256.0),256>>> (d_A, d_B, d_C, n);
-  err = cudaMemcpy(h_C, d_C, sizeof(float) *n, cudaMemcpyDeviceToHost);
-
+  err = cudaMemcpy(d_A, A, sizeof(float)*n*n, cudaMemcpyHostToDevice);
+  CHECK_ERR(err);
+  err = cudaMemcpy(d_B, B, sizeof(float)*n*n, cudaMemcpyHostToDevice);
+  CHECK_ERR(err);
+  normalized<<<ceil(n/256.0),256>>> (A, B, n);
+  err = cudaMemcpy(B, d_B, sizeof(float)*n*n, cudaMemcpyDeviceToHost);
+  CHECK_ERR(err);
 }
 
 
-__global__ void normalized()
+__global__ void normalized(float* d_A, float* d_B, int N)
 {
 
   int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -254,5 +256,35 @@ __global__ void normalized()
       totals for every block. Once the mean and standard deviation are calculated, the third step is straightforward. 
    3. Finally, calculating the normalized value by performing the following calculation (where B is the normalized matrix of A)
       B[row][col] = (A[row][col] – mean) / standard_deviation  */
+
+
+  int row, col;
+  float mu, sigma; // Mean and Standard Deviation
+
+  printf("Computing in GPU.\n");
+
+  for (col=0; col < N; col++) 
+    {
+      mu = 0.0;
+
+      for (row=0; row < N; row++)
+	mu += d_A[row][col];
+
+      mu /= (float) N;
+      sigma = 0.0;
+      
+      for (row=0; row < N; row++)
+	sigma += powf(d_A[row][col] - mu, 2.0);
+
+      sigma /= (float) N;
+      
+      for (row=0; row < N; row++) 
+	{
+	  if (sigma == 0.0)
+	    B[row][col] = 0.0;
+	  else
+	    B[row][col] = (d_A[row][col] - mu) / sigma;
+	}
+    }
 }
 

@@ -240,9 +240,14 @@ void matrixNorm()
   err = cudaMemcpy(d_B, B, sizeof(float)*n*n, cudaMemcpyHostToDevice);
   CHECK_ERR(err);
 
-  dim3 dimGrid(Width/ TILE_WIDTH, Width/TILE_WIDTH);
-  dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
-  normalized<<<dimGrid,dimBlock>>> (A, B, n);
+//dim3 dimGrid(Width/ TILE_WIDTH, Width/TILE_WIDTH);
+//dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
+//normalized<<<dimGrid,dimBlock>>> (A, B, n);
+  
+//dim3 dimGrid(,);
+//dim3 dimBlock(,);
+  int nblocks = (n+255)/256;
+  normalized<<<nblocks, 256>>> (A, B, n);
   err = cudaMemcpy(B, d_B, sizeof(float)*n*n, cudaMemcpyDeviceToHost);
   CHECK_ERR(err);
 }
@@ -250,16 +255,6 @@ void matrixNorm()
 
 __global__ void normalized(float* d_A, float* d_B, int N)
 {
-
-  int i = blockDim.x * blockIdx.x + threadIdx.x;
-  
-/* 1. Calculating the mean of the column
-   2. Calculating the standard deviation (which requires the mean)
-      you may consider splitting the reductions in two: first, inside the values in each block and, second, reducing the 
-      totals for every block. Once the mean and standard deviation are calculated, the third step is straightforward. 
-   3. Finally, calculating the normalized value by performing the following calculation (where B is the normalized matrix of A)
-      B[row][col] = (A[row][col] – mean) / standard_deviation  */
-
   //int Row = blockIdx.y * TILE_WIDTH + threadIdx.y;
   //int Col = blockIdx.x * TILE_WIDTH + threadIdx.x;
   //int tx = threadIdx.x, ty = threadIdx.y;
@@ -267,17 +262,30 @@ __global__ void normalized(float* d_A, float* d_B, int N)
   int row = blockIdx.y * blockDim.y + threadIdx.y;
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-  float mu, signma; // Mean and Standard Deviation
+  float mu = 0.0, signma = 0.0; // Mean and Standard Deviation
 
   for(int k = 0; k < N; k++)
     {
-      mu += A[k*n+col]; 
+      mu += d_A[k*n+col]; 
     }
+  mu /= (float) N;
 
-  //printf("Computing in GPU.\n");
+  for(int k = 0; k < N; k++)
+    {
+      sigma += powf(d_A[k*n+col] - mu, 2.0);
+    }
+  sigma /= (float) N;
 
-  
-
-
+  for(int k = 0; k < N; k++)
+    {
+      if(sigma == 0.0)
+	{
+	  d_B[k*n+col] = 0.0;
+	}
+      else
+	{
+	  d_B[k*n+col] = (d_A[k*n+col] - mu) / sigma;
+	}
+    }
 }
 

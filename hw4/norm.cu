@@ -216,6 +216,47 @@ void matrixNormSerial() {
 
 }
 
+__global__ void normalized(float d_A[N][N], float d_B[N][N], int N)
+{
+  //int Row = blockIdx.y * TILE_WIDTH + threadIdx.y;
+  //int Col = blockIdx.x * TILE_WIDTH + threadIdx.x;
+  //int tx = threadIdx.x, ty = threadIdx.y;
+
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if(row >= N || col>= N) return;
+
+  float mu = 0.0;
+  float sigma = 0.0; // Mean and Standard Deviation
+
+  for(int k = 0; k < N; k++)
+    {
+      mu += d_A[k*N+col];
+    }
+  mu /= (float) N;
+
+  for(int k = 0; k < N; k++)
+    {
+      sigma += powf(d_A[k*N+col] - mu, 2.0);
+    }
+  sigma /= (float) N;
+
+  for(int k = 0; k < N; k++)
+    {
+      if(sigma == 0.0)
+        {
+          d_B[k*N+col] = 0.0;
+        }
+      else
+        {
+          d_B[k*N+col] = (d_A[k*N+col] - mu) / sigma;
+        }
+    }
+}
+
+
+
 
 void matrixNorm()
 {
@@ -229,15 +270,17 @@ void matrixNorm()
 
 // Global variables are MAXN, N, A[][] and B[][]
 
+  //float d_A[N][N];
+  //float d_B[N][N];
   float *d_A, *d_B;
   cudaError_t err;
-  err = cudaMalloc((void **) &d_A, sizeof(float)*n*n);
+  err = cudaMalloc((void **) &d_A, sizeof(float)*N*N);
   CHECK_ERR(err);
-  err = cudaMalloc(()void **)&d_B, sizeof(float)*n*n);
+  err = cudaMalloc((void **)&d_B, sizeof(float)*N*N);
   CHECK_ERR(err);
-  err = cudaMemcpy(d_A, A, sizeof(float)*n*n, cudaMemcpyHostToDevice);
+  err = cudaMemcpy(d_A, A, sizeof(float)*N*N, cudaMemcpyHostToDevice);
   CHECK_ERR(err);
-  err = cudaMemcpy(d_B, B, sizeof(float)*n*n, cudaMemcpyHostToDevice);
+  err = cudaMemcpy(d_B, B, sizeof(float)*N*N, cudaMemcpyHostToDevice);
   CHECK_ERR(err);
 
 //dim3 dimGrid(Width/ TILE_WIDTH, Width/TILE_WIDTH);
@@ -246,47 +289,9 @@ void matrixNorm()
   
 //dim3 dimGrid(,);
 //dim3 dimBlock(,);
-  int nblocks = (n+255)/256;
-  normalized<<<nblocks, 256>>> (A, B, N);
-  err = cudaMemcpy(B, d_B, sizeof(float)*n*n, cudaMemcpyDeviceToHost);
+  int nblocks = (N+255)/256;
+  normalized<<<nblocks, 256>>>(d_A, d_B, N);
+  err = cudaMemcpy(B, d_B, sizeof(float)*N*N, cudaMemcpyDeviceToHost);
   CHECK_ERR(err);
   printf("Done");
 }
-
-
-__global__ void normalized(float* d_A, float* d_B, int N)
-{
-  //int Row = blockIdx.y * TILE_WIDTH + threadIdx.y;
-  //int Col = blockIdx.x * TILE_WIDTH + threadIdx.x;
-  //int tx = threadIdx.x, ty = threadIdx.y;
-
-  int row = blockIdx.y * blockDim.y + threadIdx.y;
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-  float mu = 0.0, signma = 0.0; // Mean and Standard Deviation
-
-  for(int k = 0; k < N; k++)
-    {
-      mu += d_A[k*n+col]; 
-    }
-  mu /= (float) N;
-
-  for(int k = 0; k < N; k++)
-    {
-      sigma += powf(d_A[k*n+col] - mu, 2.0);
-    }
-  sigma /= (float) N;
-
-  for(int k = 0; k < N; k++)
-    {
-      if(sigma == 0.0)
-	{
-	  d_B[k*n+col] = 0.0;
-	}
-      else
-	{
-	  d_B[k*n+col] = (d_A[k*n+col] - mu) / sigma;
-	}
-    }
-}
-
